@@ -29,11 +29,11 @@ tasks.withType(JavaCompile) {
 }
 
 publishing {
-	publications {
-		plugin(MavenPublication) {
-			artifactId rootProject.name + "-" + project.name
+    publications {
+        plugin(MavenPublication) {
+            artifactId rootProject.name + "-" + project.name
 
-			from components.java
-		}
-	}
+            from components.java
+        }
+    }
 }

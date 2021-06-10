@@ -60,7 +60,7 @@ public class BootstrapperClassLoader extends ClassLoader {
     protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
         synchronized (getClassLoadingLock(name)) {
             Class<?> c = findLoadedClass(name);
-            if (c == null && !name.startsWith("java") && !name.startsWith("jdk") && !name.startsWith("com.google.")) {
+            if (c == null && !name.startsWith("java") && !name.startsWith("jdk") && !name.startsWith("com.")) {
                 byte[] bytes = getClassBytes(name);
                 if (bytes == null) return null;
                 bytes = why.transformClassBytes(name, name, bytes);
