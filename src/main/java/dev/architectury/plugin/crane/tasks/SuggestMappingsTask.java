@@ -18,6 +18,7 @@ import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.model.ObjectFactory;
+import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputDirectory;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.TaskAction;
@@ -28,18 +29,18 @@ import org.objectweb.asm.tree.*;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 public class SuggestMappingsTask extends AbstractTask {
     private final RegularFileProperty minecraftJar;
     private final DirectoryProperty mappingsDir;
+    private Map<String, String> autoMaps = new HashMap<>();
     
     public SuggestMappingsTask() {
         ObjectFactory objects = getProject().getObjects();
@@ -57,6 +58,15 @@ public class SuggestMappingsTask extends AbstractTask {
         return mappingsDir;
     }
     
+    @Input
+    public Map<String, String> getAutoMaps() {
+        return autoMaps;
+    }
+    
+    public void autoMap(String className, String name) {
+        this.autoMaps.put(className, name);
+    }
+    
     @TaskAction
     public void invoke() throws Throwable {
         Path output = getMappingsDir().get().getAsFile().toPath();
@@ -72,12 +82,17 @@ public class SuggestMappingsTask extends AbstractTask {
                         }
                     }
                     futures.add(CompletableFuture.supplyAsync(() -> {
+                        Set<SuggestDistinctEntry> set = new HashSet<>();
                         List<SuggestEntry> entries = new ArrayList<>();
                         ClassReader reader = new ClassReader(bytes);
                         if ((reader.getAccess() & Opcodes.ACC_MODULE) == 0) {
                             ClassNode node = new ClassNode(Opcodes.ASM8);
                             reader.accept(node, ClassReader.EXPAND_FRAMES);
-                            handleClass(entries, node);
+                            handleClass(entry -> {
+                                if (set.add(new SuggestDistinctEntry(entry.methodOwner, entry.methodName, entry.methodDescriptor, entry.lvIndex))) {
+                                    entries.add(entry);
+                                }
+                            }, node);
                         }
                         return entries;
                     }, service));
@@ -91,7 +106,7 @@ public class SuggestMappingsTask extends AbstractTask {
                     .thenApply(unused -> futures.stream().flatMap(future -> future.join().stream()).collect(Collectors.toList()))
                     .get();
             int suggested = 0;
-            for (Map.Entry<String, List<SuggestEntry>> entry : entries.stream().collect(Collectors.groupingBy(SuggestEntry::methodOwner)).entrySet()) {
+            for (Map.Entry<String, List<SuggestEntry>> entry : entries.stream().distinct().collect(Collectors.groupingBy(SuggestEntry::methodOwner)).entrySet()) {
                 String className = entry.getKey();
                 String[] paths = className.split("\\$");
                 Path path = output.resolve(paths[0] + ".mapping");
@@ -128,8 +143,8 @@ public class SuggestMappingsTask extends AbstractTask {
                         }
                     }
                     
-                    LocalVariableEntry localVariableEntry = new LocalVariableEntry(methodEntry, suggestEntry.lvIndex, suggestEntry.fieldName, true, null);
-                    tree.insert(localVariableEntry, new EntryMapping(suggestEntry.fieldName));
+                    LocalVariableEntry localVariableEntry = new LocalVariableEntry(methodEntry, suggestEntry.lvIndex, "", true, null);
+                    tree.insert(localVariableEntry, new EntryMapping(suggestEntry.suggestionName));
                     suggested++;
                 }
                 if (path.getParent() != null) Files.createDirectories(path.getParent());
@@ -138,14 +153,17 @@ public class SuggestMappingsTask extends AbstractTask {
                 }
                 EnigmaMappingsWriter.FILE.write(tree, path, ProgressListener.none(), new MappingSaveParameters(MappingFileNameFormat.BY_OBF));
             }
-            logger.lifecycle("Suggested " + entries.size() + " parameters!");
+            logger.lifecycle("Suggested " + suggested + " parameters!");
         }
     }
     
-    private void handleClass(List<SuggestEntry> entries, ClassNode classNode) {
+    private void handleClass(Consumer<SuggestEntry> consumer, ClassNode classNode) {
         for (MethodNode method : classNode.methods) {
             if (method.name.contains("lambda") || (method.access & Opcodes.ACC_SYNTHETIC) != 0) continue;
-            int args = Type.getMethodType(method.desc).getArgumentTypes().length;
+            boolean isStatic = (method.access & Opcodes.ACC_STATIC) != 0;
+            Type methodType = Type.getMethodType(method.desc);
+            Type[] argumentTypes = methodType.getArgumentTypes();
+            int args = argumentTypes.length;
             StreamSupport.stream(method.instructions.spliterator(), false)
                     .filter(node -> node.getOpcode() == Opcodes.PUTFIELD || node.getOpcode() == Opcodes.PUTSTATIC)
                     .forEach(node -> {
@@ -154,20 +172,33 @@ public class SuggestMappingsTask extends AbstractTask {
                         if (previous != null && previous.getOpcode() >= Opcodes.ILOAD && previous.getOpcode() <= Opcodes.ALOAD
                             && (node.getOpcode() == Opcodes.PUTSTATIC || (previousPrevious != null && previousPrevious.getOpcode() >= Opcodes.ILOAD && previousPrevious.getOpcode() <= Opcodes.ALOAD))) {
                             int targetIndex = ((VarInsnNode) previous).var;
-                            if (targetIndex >= ((method.access & Opcodes.ACC_STATIC) != 0 ? 0 : 1) + args) return;
+                            if (targetIndex >= (isStatic ? 0 : 1) + args) return;
                             FieldInsnNode fieldInsnNode = (FieldInsnNode) node;
                             if (fieldInsnNode.name.contains("$")) return;
-                            entries.add(new SuggestEntry(fieldInsnNode.owner, fieldInsnNode.name, fieldInsnNode.desc,
+                            consumer.accept(new SuggestEntry(fieldInsnNode.name,
                                     classNode.name, method.name, method.desc, targetIndex));
                         }
                     });
+            if (args == 1) {
+                Type type = argumentTypes[0];
+                String autoMap = autoMaps.get(type.getInternalName());
+                if (autoMap != null) {
+                    consumer.accept(new SuggestEntry(autoMap,
+                            classNode.name, method.name, method.desc, isStatic ? 0 : 1));
+                }
+            }
         }
     }
     
     private record SuggestEntry(
-            String fieldOwner,
-            String fieldName,
-            String fieldDescriptor,
+            String suggestionName,
+            String methodOwner,
+            String methodName,
+            String methodDescriptor,
+            int lvIndex
+    ) {}
+    
+    private record SuggestDistinctEntry(
             String methodOwner,
             String methodName,
             String methodDescriptor,
