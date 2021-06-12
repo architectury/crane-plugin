@@ -21,6 +21,7 @@ package dev.architectury.plugin.crane.tasks;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import dev.architectury.plugin.crane.util.Downloader;
 import org.apache.commons.io.FileUtils;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.Property;
@@ -81,12 +82,9 @@ public class DownloadVersionFileTask extends MinecraftVersionBasedTask {
             manifest = JsonParser.parseReader(new InputStreamReader(stream, StandardCharsets.UTF_8)).getAsJsonObject();
         }
         File output = this.output.getAsFile().get();
-        if (output.getParentFile() != null) {
-            output.getParentFile().mkdirs();
-        }
-        output.delete();
         JsonObject downloads = manifest.getAsJsonObject("downloads").getAsJsonObject(getId().get());
+        String sha1 = downloads.getAsJsonPrimitive("sha1").getAsString();
         String url = downloads.getAsJsonPrimitive("url").getAsString();
-        FileUtils.copyURLToFile(new URL(url), output);
+        Downloader.downloadTo(getProject(), new URL(url), sha1, output.toPath());
     }
 }

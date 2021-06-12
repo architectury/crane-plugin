@@ -56,8 +56,16 @@ public class CraneExtension {
         return file;
     }
     
-    public File getExportedFile() {
+    public File getExportedTiny() {
         File file = new File(project.getBuildDir(), "export/" + getMinecraftVersion().get() + ".tiny");
+        if (file.getParentFile() != null) {
+            file.getParentFile().mkdirs();
+        }
+        return file;
+    }
+    
+    public File getExportedTinyJar() {
+        File file = new File(project.getBuildDir(), "export/" + getMinecraftVersion().get() + "-tiny.jar");
         if (file.getParentFile() != null) {
             file.getParentFile().mkdirs();
         }

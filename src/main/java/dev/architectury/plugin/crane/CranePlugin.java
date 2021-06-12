@@ -20,93 +20,95 @@
 package dev.architectury.plugin.crane;
 
 import dev.architectury.plugin.crane.extensions.CraneExtension;
-import dev.architectury.plugin.crane.tasks.CollectMojangMappingsTask;
-import dev.architectury.plugin.crane.tasks.DownloadLibrariesTask;
-import dev.architectury.plugin.crane.tasks.DownloadVersionFileTask;
-import dev.architectury.plugin.crane.tasks.DownloadVersionManifestTask;
-import dev.architectury.plugin.crane.tasks.SuggestMappingsTask;
-import dev.architectury.plugin.crane.tasks.ExportTinyTask;
-import dev.architectury.plugin.crane.tasks.MergeJarsTask;
-import dev.architectury.plugin.crane.tasks.RemapJarTask;
-import dev.architectury.plugin.crane.tasks.RunTask;
+import dev.architectury.plugin.crane.tasks.*;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.api.tasks.TaskContainer;
 
+import java.io.File;
+import java.util.Arrays;
+
 public class CranePlugin implements Plugin<Project> {
-	@Override
-	public void apply(Project project) {
-		project.getExtensions().create("crane", CraneExtension.class, project);
-
-		setupTasks(project);
-	}
-
-	private void setupTasks(Project project) {
-		TaskContainer tasks = project.getTasks();
-		DownloadVersionManifestTask downloadManifest = tasks.create("downloadManifest", DownloadVersionManifestTask.class);
-		DownloadLibrariesTask downloadLibraries = tasks.create("downloadLibraries", DownloadLibrariesTask.class, task -> {
-			task.dependsOn(downloadManifest);
-			task.getManifest().convention(downloadManifest.getOutput());
-		});
-		DownloadVersionFileTask downloadClientJar = tasks.create("downloadClientJar", DownloadVersionFileTask.class, task -> {
-			task.dependsOn(downloadManifest);
-			task.getManifest().convention(downloadManifest.getOutput());
-			task.getId().set("client");
-			task.getClassifier().set(".jar");
-		});
-		DownloadVersionFileTask downloadServerJar = tasks.create("downloadServerJar", DownloadVersionFileTask.class, task -> {
-			task.dependsOn(downloadManifest);
-			task.getManifest().convention(downloadManifest.getOutput());
-			task.getId().set("server");
-			task.getClassifier().set(".jar");
-		});
-		MergeJarsTask mergeJars = tasks.create("mergeJars", MergeJarsTask.class, task -> {
-			task.dependsOn(downloadClientJar, downloadServerJar);
-			task.getClient().convention(downloadClientJar.getOutput());
-			task.getServer().convention(downloadServerJar.getOutput());
-			task.getMerged().convention(() -> task.getExtension().getMergedJar());
-		});
-		DownloadVersionFileTask downloadClientMappings = tasks.create("downloadClientMappings", DownloadVersionFileTask.class, task -> {
-			task.dependsOn(downloadManifest);
-			task.getManifest().convention(downloadManifest.getOutput());
-			task.getId().set("client_mappings");
-			task.getClassifier().set(".map");
-		});
-		DownloadVersionFileTask downloadServerMappings = tasks.create("downloadServerMappings", DownloadVersionFileTask.class, task -> {
-			task.dependsOn(downloadManifest);
-			task.getManifest().convention(downloadManifest.getOutput());
-			task.getId().set("server_mappings");
-			task.getClassifier().set(".map");
-		});
-		CollectMojangMappingsTask collectMojangMappings = tasks.create("collectMojangMappings", CollectMojangMappingsTask.class, task -> {
-			task.dependsOn(downloadClientMappings, downloadServerMappings);
-			task.getClientMap().convention(downloadClientMappings.getOutput());
-			task.getServerMap().convention(downloadServerMappings.getOutput());
-		});
-		RemapJarTask remapJar = tasks.create("remapJar", RemapJarTask.class, task -> {
-			task.dependsOn(mergeJars, collectMojangMappings, downloadLibraries);
-			task.getInput().convention(mergeJars.getMerged());
-			task.getOutput().convention(() -> task.getExtension().getMappedMergedJar());
-			task.getClasspath().from(downloadLibraries.getOutputDirectory().map(file -> file.getAsFile().listFiles()));
-			task.getMappings().convention(collectMojangMappings.getOutput());
-			task.getFrom().convention("official");
-			task.getTo().convention("named");
-		});
-		tasks.create("run", RunTask.class, task -> {
-			task.dependsOn(remapJar);
-			task.getMinecraftJar().convention(remapJar.getOutput());
-			task.getMappingsDir().convention(project.provider(() -> task.getExtension().getMappingsDir()));
-		});
-		tasks.create("suggestMappings", SuggestMappingsTask.class, task -> {
-			task.dependsOn(remapJar);
-			task.getMinecraftJar().convention(remapJar.getOutput());
-			task.getMappingsDir().convention(project.provider(() -> task.getExtension().getMappingsDir()));
-		});
-		tasks.create("export", ExportTinyTask.class, task -> {
-			task.dependsOn(remapJar);
-			task.getMinecraftJar().convention(remapJar.getOutput());
-			task.getMappingsDir().convention(project.provider(() -> task.getExtension().getMappingsDir()));
-			task.getOutput().convention(() -> task.getExtension().getExportedFile());
-		});
-	}
+    @Override
+    public void apply(Project project) {
+        project.getExtensions().create("crane", CraneExtension.class, project);
+        
+        setupTasks(project);
+    }
+    
+    private void setupTasks(Project project) {
+        TaskContainer tasks = project.getTasks();
+        DownloadVersionManifestTask downloadManifest = tasks.create("downloadManifest", DownloadVersionManifestTask.class);
+        DownloadLibrariesTask downloadLibraries = tasks.create("downloadLibraries", DownloadLibrariesTask.class, task -> {
+            task.dependsOn(downloadManifest);
+            task.getManifest().convention(downloadManifest.getOutput());
+        });
+        DownloadVersionFileTask downloadClientJar = tasks.create("downloadClientJar", DownloadVersionFileTask.class, task -> {
+            task.dependsOn(downloadManifest);
+            task.getManifest().convention(downloadManifest.getOutput());
+            task.getId().set("client");
+            task.getClassifier().set(".jar");
+        });
+        DownloadVersionFileTask downloadServerJar = tasks.create("downloadServerJar", DownloadVersionFileTask.class, task -> {
+            task.dependsOn(downloadManifest);
+            task.getManifest().convention(downloadManifest.getOutput());
+            task.getId().set("server");
+            task.getClassifier().set(".jar");
+        });
+        MergeJarsTask mergeJars = tasks.create("mergeJars", MergeJarsTask.class, task -> {
+            task.dependsOn(downloadClientJar, downloadServerJar);
+            task.getClient().convention(downloadClientJar.getOutput());
+            task.getServer().convention(downloadServerJar.getOutput());
+            task.getMerged().convention(() -> task.getExtension().getMergedJar());
+        });
+        DownloadVersionFileTask downloadClientMappings = tasks.create("downloadClientMappings", DownloadVersionFileTask.class, task -> {
+            task.dependsOn(downloadManifest);
+            task.getManifest().convention(downloadManifest.getOutput());
+            task.getId().set("client_mappings");
+            task.getClassifier().set(".map");
+        });
+        DownloadVersionFileTask downloadServerMappings = tasks.create("downloadServerMappings", DownloadVersionFileTask.class, task -> {
+            task.dependsOn(downloadManifest);
+            task.getManifest().convention(downloadManifest.getOutput());
+            task.getId().set("server_mappings");
+            task.getClassifier().set(".map");
+        });
+        CollectMojangMappingsTask collectMojangMappings = tasks.create("collectMojangMappings", CollectMojangMappingsTask.class, task -> {
+            task.dependsOn(downloadClientMappings, downloadServerMappings);
+            task.getClientMap().convention(downloadClientMappings.getOutput());
+            task.getServerMap().convention(downloadServerMappings.getOutput());
+        });
+        RemapJarTask remapJar = tasks.create("remapJar", RemapJarTask.class, task -> {
+            task.dependsOn(mergeJars, collectMojangMappings, downloadLibraries);
+            task.getInput().convention(mergeJars.getMerged());
+            task.getOutput().convention(() -> task.getExtension().getMappedMergedJar());
+            task.getClasspath().from(downloadLibraries.getOutputDirectory().map(file -> Arrays.stream(file.getAsFile().listFiles())
+                    .filter(path -> path.getName().endsWith(".jar"))
+                    .toArray(File[]::new)));
+            task.getMappings().convention(collectMojangMappings.getOutput());
+            task.getFrom().convention("official");
+            task.getTo().convention("named");
+        });
+        tasks.create("run", RunTask.class, task -> {
+            task.dependsOn(remapJar);
+            task.getMinecraftJar().convention(remapJar.getOutput());
+            task.getMappingsDir().convention(project.provider(() -> task.getExtension().getMappingsDir()));
+        });
+        tasks.create("suggestMappings", SuggestMappingsTask.class, task -> {
+            task.dependsOn(remapJar);
+            task.getMinecraftJar().convention(remapJar.getOutput());
+            task.getMappingsDir().convention(project.provider(() -> task.getExtension().getMappingsDir()));
+        });
+        ExportTinyTask exportTiny = tasks.create("exportTiny", ExportTinyTask.class, task -> {
+            task.dependsOn(remapJar);
+            task.getMinecraftJar().convention(remapJar.getOutput());
+            task.getMappingsDir().convention(project.provider(() -> task.getExtension().getMappingsDir()));
+            task.getOutput().convention(() -> task.getExtension().getExportedTiny());
+        });
+        tasks.create("exportTinyJar", ExportTinyJarTask.class, task -> {
+            task.dependsOn(remapJar);
+            task.getTinyFile().convention(exportTiny.getOutput());
+            task.getOutput().convention(() -> task.getExtension().getExportedTinyJar());
+        });
+    }
 }

@@ -23,6 +23,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import dev.architectury.plugin.crane.util.Downloader;
 import me.tongfei.progressbar.DelegatingProgressBarConsumer;
 import me.tongfei.progressbar.ProgressBar;
 import me.tongfei.progressbar.ProgressBarBuilder;
@@ -75,8 +76,6 @@ public class DownloadLibrariesTask extends MinecraftVersionBasedTask {
             try (InputStream stream = FileUtils.openInputStream(getManifest().getAsFile().get())) {
                 manifest = JsonParser.parseReader(new InputStreamReader(stream, StandardCharsets.UTF_8)).getAsJsonObject();
             }
-            FileUtils.deleteDirectory(outputDirectory);
-            outputDirectory.mkdirs();
             ExecutorService service = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() * 4);
             List<CompletableFuture<Void>> futures = new ArrayList<>();
             JsonArray libraries = manifest.getAsJsonArray("libraries");
@@ -94,9 +93,10 @@ public class DownloadLibrariesTask extends MinecraftVersionBasedTask {
                             JsonObject libraryObj = library.getAsJsonObject();
                             JsonObject artifactObj = libraryObj.getAsJsonObject("downloads").getAsJsonObject("artifact");
                             String path = artifactObj.getAsJsonPrimitive("path").getAsString().replace('/', '-');
+                            String sha1 = artifactObj.getAsJsonPrimitive("sha1").getAsString();
                             String url = artifactObj.getAsJsonPrimitive("url").getAsString();
                             File downloadTo = new File(outputDirectory, path);
-                            FileUtils.copyURLToFile(new URL(url), downloadTo);
+                            Downloader.downloadTo(getProject(), new URL(url), sha1, downloadTo.toPath());
                             synchronized (progressBar) {
                                 progressBar.step();
                             }

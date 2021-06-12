@@ -22,12 +22,17 @@ package dev.architectury.plugin.crane.util;
 import dev.architectury.tinyremapper.IMappingProvider;
 import net.fabricmc.mapping.tree.*;
 
+/*
+ * This class is part of fabric-loom, licensed under the MIT License (MIT).
+ *
+ * Copyright (c) 2016, 2017, 2018 FabricMC
+ */
 public class TinyRemapperMappingsHelper {
-	private TinyRemapperMappingsHelper() { }
-
-	private static IMappingProvider.Member memberOf(String className, String memberName, String descriptor) {
-		return new IMappingProvider.Member(className, memberName, descriptor);
-	}
+    private TinyRemapperMappingsHelper() { }
+    
+    private static IMappingProvider.Member memberOf(String className, String memberName, String descriptor) {
+        return new IMappingProvider.Member(className, memberName, descriptor);
+    }
     
     public static IMappingProvider create(TinyTree mappings, String from, String to, boolean remapLocalVariables) {
         return (acceptor) -> {
