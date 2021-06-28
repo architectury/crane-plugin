@@ -2,8 +2,7 @@
   "compatibilityLevel": "JAVA_16",
   "package": "dev.architectury.crane.bootstrap.mixins",
   "mixins": [
-    "MixinDecompiledClassSource",
-    "MixinEditorPanel2",
-    "MixinEditorPopupMenu"
+    "MixinClassSelector", "MixinClassSelectorClassNode", "MixinClassSelectorPackageNode", "MixinDecompiledClassSource", "MixinEditorPanel2",
+    "MixinEditorPopupMenu", "MixinGuiController", "MixinMenuBar"
   ]
 }
