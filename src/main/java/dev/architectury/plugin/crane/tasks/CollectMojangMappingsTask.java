@@ -82,11 +82,12 @@ public class CollectMojangMappingsTask extends MinecraftVersionBasedTask {
      * Copyright (c) 2016, 2017, 2018 FabricMC
      */
     private void saveTo(File output, Path clientMappings, Path serverMappings) throws IOException {
-        try (StringWriter writer = new StringWriter()) {
-            MappingSet mappingsSet = getMappingsSet(clientMappings, serverMappings);
-            new TinyMappingsWriter(writer, "official", "named").write(mappingsSet);
-            FileUtils.write(output, writer.toString(), StandardCharsets.UTF_8);
+        StringWriter writer = new StringWriter();
+        MappingSet mappingsSet = getMappingsSet(clientMappings, serverMappings);
+        try (TinyMappingsWriter w = new TinyMappingsWriter(writer, "official", "named")) {
+            w.write(mappingsSet);
         }
+        FileUtils.write(output, writer.toString(), StandardCharsets.UTF_8);
     }
     
     /*
