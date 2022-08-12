@@ -75,7 +75,7 @@ gradlePlugin {
     plugins {
         plugin {
             id = "me.shedaniel.crane.crane-plugin"
-            implementationClass = "me.shedaniel.crane.plugin.crane.CranePlugin"
+            implementationClass = "dev.architectury.plugin.crane.CranePlugin"
         }
     }
 }

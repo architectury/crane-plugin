@@ -10,7 +10,7 @@ repositories {
 }
 
 dependencies {
-    def asm_version = "9.1"
+    def asm_version = "9.3"
     implementation "org.ow2.asm:asm:$asm_version"
     implementation "org.ow2.asm:asm-analysis:$asm_version"
     implementation "org.ow2.asm:asm-commons:$asm_version"
