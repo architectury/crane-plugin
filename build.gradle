@@ -15,7 +15,7 @@ allprojects {
     apply plugin: "maven-publish"
 
     def runNumber = System.getenv("GITHUB_RUN_NUMBER") ?: "9999"
-    group "dev.architectury"
+    group "me.shedaniel.crane"
     version "0.2.$runNumber"
 
     license {
@@ -74,8 +74,8 @@ dependencies {
 gradlePlugin {
     plugins {
         plugin {
-            id = "dev.architectury.crane-plugin"
-            implementationClass = "dev.architectury.plugin.crane.CranePlugin"
+            id = "me.shedaniel.crane.crane-plugin"
+            implementationClass = "me.shedaniel.crane.plugin.crane.CranePlugin"
         }
     }
 }
