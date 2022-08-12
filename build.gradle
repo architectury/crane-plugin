@@ -1,7 +1,7 @@
 plugins {
     id "java"
     id "java-gradle-plugin"
-    id "org.cadixdev.licenser" version "0.5.0" apply false
+    id "org.cadixdev.licenser" version "0.6.1" apply false
 }
 
 repositories {
@@ -16,7 +16,7 @@ allprojects {
 
     def runNumber = System.getenv("GITHUB_RUN_NUMBER") ?: "9999"
     group "dev.architectury"
-    version "0.1.$runNumber"
+    version "0.2.$runNumber"
 
     license {
         header = rootProject.file("HEADER")
@@ -63,7 +63,7 @@ dependencies {
     implementation "dev.architectury:mappings-layers-core:1.2.7"
     implementation "net.fabricmc:tiny-mappings-parser:0.3.0+build.17"
     implementation "dev.architectury:architectury-transformer:$transformer_version"
-    def asm_version = "9.1"
+    def asm_version = "9.3"
     implementation "org.ow2.asm:asm:$asm_version"
     implementation "org.ow2.asm:asm-analysis:$asm_version"
     implementation "org.ow2.asm:asm-commons:$asm_version"

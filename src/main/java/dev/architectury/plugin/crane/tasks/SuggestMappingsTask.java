@@ -32,7 +32,9 @@ import cuchaz.enigma.translation.representation.entry.ClassEntry;
 import cuchaz.enigma.translation.representation.entry.Entry;
 import cuchaz.enigma.translation.representation.entry.LocalVariableEntry;
 import cuchaz.enigma.translation.representation.entry.MethodEntry;
-import dev.architectury.transformer.input.OpenedInputInterface;
+import dev.architectury.transformer.input.FileAccess;
+import dev.architectury.transformer.input.FileView;
+import dev.architectury.transformer.input.OpenedFileAccess;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.logging.Logger;
@@ -46,6 +48,7 @@ import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.*;
 
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
@@ -99,10 +102,10 @@ public class SuggestMappingsTask extends AbstractTask {
     @TaskAction
     public void invoke() throws Throwable {
         Path output = getMappingsDir().get().getAsFile().toPath();
-        try (OpenedInputInterface inputInterface = OpenedInputInterface.ofJar(getMinecraftJar().get().getAsFile().toPath())) {
+        try (FileView view = OpenedFileAccess.ofJar(getMinecraftJar().get().getAsFile().toPath())) {
             ExecutorService service = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
             List<CompletableFuture<List<SuggestEntry>>> futures = new ArrayList<>();
-            inputInterface.handle((file, bytes) -> {
+            view.handle((file, bytes) -> {
                 if (file.endsWith(".class")) {
                     String[] split = file.split("\\$");
                     for (int i = 1; i < split.length; i++) {
@@ -183,6 +186,16 @@ public class SuggestMappingsTask extends AbstractTask {
                 EnigmaMappingsWriter.FILE.write(tree, path, ProgressListener.none(), new MappingSaveParameters(MappingFileNameFormat.BY_OBF));
             }
             logger.lifecycle("Suggested " + suggested + " parameters!");
+        }
+        try (FileAccess access = OpenedFileAccess.ofDirectory(output)) {
+            access.deleteFiles((s, bytes) -> {
+                if (s.endsWith(".mapping")) {
+                    return new String(bytes, StandardCharsets.UTF_8).lines()
+                                   .filter(line -> !line.isBlank())
+                                   .count() <= 1;
+                }
+                return true;
+            });
         }
     }
     

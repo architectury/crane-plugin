@@ -19,7 +19,8 @@
 
 package dev.architectury.plugin.crane.tasks;
 
-import dev.architectury.transformer.input.OpenedOutputInterface;
+import dev.architectury.transformer.input.FileAccess;
+import dev.architectury.transformer.input.OpenedFileAccess;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.tasks.InputFile;
@@ -56,8 +57,8 @@ public class ExportTinyJarTask extends AbstractTask {
             output.getParentFile().mkdirs();
         }
         output.delete();
-        try (OpenedOutputInterface outputInterface = OpenedOutputInterface.ofJar(output.toPath())) {
-            outputInterface.addFile("crane.tiny", Files.readAllBytes(getTinyFile().getAsFile().get().toPath()));
+        try (FileAccess access = OpenedFileAccess.ofJar(output.toPath())) {
+            access.addFile("crane.tiny", Files.readAllBytes(getTinyFile().getAsFile().get().toPath()));
         }
     }
 }
